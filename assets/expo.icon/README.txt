@@ -1,0 +1,1 @@
+Sewakuy icon
