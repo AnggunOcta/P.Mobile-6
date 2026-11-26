@@ -28,6 +28,7 @@ import {
 import { fetchExternalRentalItems } from "../../constants/externalApi";
 import { RentalItem } from "../../constants/types";
 import { colors, styles } from "../../theme/styles";
+import { useAuth } from "../../context/AuthContext";
 
 // Custom function: judul section yang bisa dipakai ulang
 const renderSectionHeader = (title: string, link?: string) => (
@@ -123,6 +124,9 @@ function matchesCategory(item: RentalItem, category: CategoryFilter): boolean {
 
 export default function Index() {
   const router = useRouter();
+  const { user } = useAuth();
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const userInitial = displayName.charAt(0).toUpperCase();
   const [selected, setSelected] = useState<CategoryFilter>("semua");
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [query, setQuery] = useState<string>("");
@@ -267,7 +271,7 @@ export default function Index() {
       {/* Greeting */}
       <View style={styles.greetingRow}>
         <View>
-          <Text style={styles.greeting}>Halo! 👋</Text>
+          <Text style={styles.greeting}>Halo, {displayName}! 👋</Text>
           <Text style={styles.subGreeting}>Mau sewa barang apa hari ini?</Text>
         </View>
         <View style={styles.savePill}>
@@ -575,9 +579,9 @@ export default function Index() {
               color={colors.text}
             />
             <Ionicons name="chatbox-outline" size={24} color={colors.text} />
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>F</Text>
-            </View>
+            <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profil")}>
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            </Pressable>
           </View>
         </View>
 

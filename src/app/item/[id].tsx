@@ -1,13 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatDistance, formatRupiah, getCategory, items } from "../../constants/data";
 import { fetchExternalRentalItem } from "../../constants/externalApi";
 import type { CategoryId, RentalItem } from "../../constants/types";
 import { createRentalOrder, useRentals } from "../../context/RentalContext";
+import { useFavorites } from "../../context/FavoriteContext";
+import { useCart } from "../../context/CartContext";
 import { colors, styles } from "../../theme/styles";
 
 const categoryIds: CategoryId[] = ["elektronik", "fashion", "outdoor", "aksesoris", "acara"];
@@ -59,6 +61,8 @@ function parseRentalItem(value: string | string[] | undefined): RentalItem | nul
 export default function ItemDetail() {
   const router = useRouter();
   const { addOrder } = useRentals();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCart } = useCart();
   
   // Modul 2: useLocalSearchParams untuk mengambil parameter URL aktif
   const { id, days, item: itemParam } = useLocalSearchParams<{
@@ -69,7 +73,6 @@ export default function ItemDetail() {
 
   // Modul 2: useState untuk state re-render
   const [rentalDays, setRentalDays] = useState<number>(Number(days) || 1);
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [externalRequest, setExternalRequest] = useState<{
     id: string;
     item?: RentalItem;
@@ -174,19 +177,45 @@ export default function ItemDetail() {
     setRentalDays((prev) => Math.max(1, prev + delta));
   };
 
+  const handleAddToCart = () => {
+    if (!item) return;
+    addToCart(item, category?.name ?? "Kategori lainnya", rentalDays);
+    if (Platform.OS === "web") {
+      alert(`${item.name} berhasil ditambahkan ke Keranjang!`);
+    } else {
+      Alert.alert(
+        "Berhasil",
+        `${item.name} berhasil ditambahkan ke Keranjang.`,
+        [
+          {
+            text: "Lihat Keranjang",
+            onPress: () => router.push("/(tabs)/keranjang"),
+          },
+          { text: "Lanjut", style: "cancel" },
+        ]
+      );
+    }
+  };
+
   const handleConfirmRent = () => {
+    if (!item) return;
     addOrder(createRentalOrder(item, category?.name ?? "Kategori lainnya", rentalDays));
-    Alert.alert(
-      "Sewa Berhasil",
-      `${item.name} berhasil ditambahkan ke Sewa Saya.\nDurasi: ${rentalDays} hari\nTotal estimasi: ${formatRupiah(totalPrice)}`,
-      [
-        {
-          text: "Lihat Sewa Saya",
-          onPress: () => router.replace("/(tabs)/sewa-saya"),
-        },
-        { text: "Nanti", style: "cancel" },
-      ]
-    );
+    if (Platform.OS === "web") {
+      alert(`${item.name} berhasil disewa dan masuk ke Pesanan!`);
+      router.replace("/(tabs)/sewa-saya");
+    } else {
+      Alert.alert(
+        "Sewa Berhasil",
+        `${item.name} berhasil ditambahkan ke Pesanan.\nDurasi: ${rentalDays} hari\nTotal estimasi: ${formatRupiah(totalPrice)}`,
+        [
+          {
+            text: "Lihat Pesanan",
+            onPress: () => router.replace("/(tabs)/sewa-saya"),
+          },
+          { text: "Nanti", style: "cancel" },
+        ]
+      );
+    }
   };
 
   return (
@@ -201,15 +230,18 @@ export default function ItemDetail() {
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </Pressable>
           ),
-          headerRight: () => (
-            <Pressable onPress={() => setIsFavorite(!isFavorite)}>
-              <Ionicons
-                name={isFavorite ? "heart" : "heart-outline"}
-                size={24}
-                color={isFavorite ? "#ef4444" : colors.text}
-              />
-            </Pressable>
-          ),
+          headerRight: () => {
+            const isFav = isFavorite(item.id);
+            return (
+              <Pressable onPress={() => toggleFavorite(item)}>
+                <Ionicons
+                  name={isFav ? "heart" : "heart-outline"}
+                  size={24}
+                  color={isFav ? "#ef4444" : colors.text}
+                />
+              </Pressable>
+            );
+          },
         }}
       />
 
@@ -261,14 +293,43 @@ export default function ItemDetail() {
           </View>
         </View>
 
-        <View style={[styles.guarantee, { marginTop: 16 }]}>
+        <View style={[styles.guarantee, { marginTop: 16, alignItems: "center" }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.nearSub}>Total Estimasi Biaya (useMemo)</Text>
+            <Text style={styles.nearSub}>Total Estimasi Biaya</Text>
             <Text style={[styles.price, { fontSize: 18 }]}>{formatRupiah(totalPrice)}</Text>
           </View>
-          <Pressable style={styles.ctaBtn} onPress={handleConfirmRent}>
-            <Text style={styles.ctaBtnText}>Konfirmasi Sewa</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Pressable
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                backgroundColor: "#fff",
+                borderWidth: 1.5,
+                borderColor: colors.accent,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 18,
+              }}
+              onPress={handleAddToCart}
+              accessibilityRole="button"
+              accessibilityLabel="Tambah ke Keranjang"
+            >
+              <Ionicons name="cart-outline" size={16} color={colors.primary} />
+              <Text style={{ fontWeight: "800", color: colors.primary, fontSize: 13 }}>
+                + Keranjang
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.ctaBtn, { paddingHorizontal: 18 }]}
+              onPress={handleConfirmRent}
+              accessibilityRole="button"
+              accessibilityLabel="Sewa Sekarang"
+            >
+              <Text style={styles.ctaBtnText}>Sewa</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

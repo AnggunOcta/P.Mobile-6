@@ -16,7 +16,7 @@ export const colors = {
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   wrapper: { flex: 1, width: "100%", maxWidth: 760, alignSelf: "center" },
-  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 100 },
 
   // Header
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 },
